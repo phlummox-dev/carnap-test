@@ -1,0 +1,176 @@
+diff --git a/Carnap-Server/Application.hs b/Carnap-Server/Application.hs
+index 1c8e3e9..954dd96 100644
+--- a/Carnap-Server/Application.hs
++++ b/Carnap-Server/Application.hs
+@@ -14,8 +14,8 @@ module Application
+     ) where
+ 
+ import Control.Monad.Logger                 (liftLoc, runLoggingT)
+-import Database.Persist.Postgresql          (createPostgresqlPool, pgConnStr, pgPoolSize, runSqlPool)
+-import Database.Persist.Sqlite              (createSqlitePool)
++--import Database.Persist.Postgresql          (createPostgresqlPool, pgConnStr, pgPoolSize, runSqlPool)
++import Database.Persist.Sqlite              (createSqlitePool, runSqlPool)
+ import Import
+ import Language.Haskell.TH.Syntax           (qLocation)
+ import Network.Wai (Middleware)
+@@ -87,11 +87,12 @@ makeFoundation appSettings = do
+ 
+     --Create the database connection pool
+     pool <- flip runLoggingT logFunc $ 
+-                if appSqlite appSettings 
+-                    then createSqlitePool (pack (appDataRoot appSettings </> "sqlite.db")) 10
+-                    else createPostgresqlPool
+-                        (pgConnStr  $ appDatabaseConf appSettings)
+-                        (pgPoolSize $ appDatabaseConf appSettings)
++                createSqlitePool (pack (appDataRoot appSettings </> "sqlite.db")) 10
++                --if appSqlite appSettings
++                --    then createSqlitePool (pack (appDataRoot appSettings </> "sqlite.db")) 10
++                --    else createPostgresqlPool
++                --        (pgConnStr  $ appDatabaseConf appSettings)
++                --        (pgPoolSize $ appDatabaseConf appSettings)
+ 
+     -- Perform database migration using our application's logging settings.
+     runLoggingT (runSqlPool (runMigration migrateAll) pool) logFunc
+diff --git a/Carnap-Server/Foundation.hs b/Carnap-Server/Foundation.hs
+index bb41104..b0c7d81 100644
+--- a/Carnap-Server/Foundation.hs
++++ b/Carnap-Server/Foundation.hs
+@@ -3,7 +3,7 @@ module Foundation where
+ import Database.Persist.Sql        (ConnectionPool, runSqlPool)
+ import Import.NoFoundation
+ import Text.Hamlet                 (hamletFile)
+-import SecureStrings               (googleApiKey, googleSecret)
++--import SecureStrings               (googleApiKey, googleSecret)
+ import Yesod.Auth.GoogleEmail2 as GE (authGoogleEmail, forwardUrl)
+ import Yesod.Auth.Dummy            (authDummy)
+ import qualified Yesod.Core.Unsafe as Unsafe
+@@ -270,9 +270,10 @@ instance YesodAuth App where
+     -- appDevel is a custom method added to the settings, which is true
+     -- when yesod is running in the development environment and false
+     -- otherwise
+-    authPlugins app = if appDevel (appSettings app) 
+-                          then [authDummy]
+-                          else [authGoogleEmail googleApiKey googleSecret]
++    authPlugins app = --if appDevel (appSettings app)
++                      --    then [authDummy]
++                      --    else [authGoogleEmail googleApiKey googleSecret]
++                      [authDummy]
+ 
+     authHttpManager = getHttpManager
+ 
+diff --git a/Carnap-Server/Settings.hs b/Carnap-Server/Settings.hs
+index fa09a0d..542db6c 100644
+--- a/Carnap-Server/Settings.hs
++++ b/Carnap-Server/Settings.hs
+@@ -1,4 +1,6 @@
+ {-# Language CPP #-}
++{-# LANGUAGE DeriveGeneric #-}
++
+ -- | Settings are centralized, as much as possible, into this file. This
+ -- includes database connection settings, static file locations, etc.
+ -- In addition, you can configure a number of different aspects of Yesod
+@@ -8,17 +10,29 @@ module Settings where
+ 
+ import ClassyPrelude.Yesod
+ import Control.Exception           (throw)
+-import Data.Aeson                  (Result (..), fromJSON, withObject, (.!=),
+-                                    (.:?))
++--import Data.Aeson                  (Result (..), fromJSON, withObject, (.!=),
++--                                    (.:?))
++import Data.Aeson
+ import Data.FileEmbed              (embedFile)
+ import Data.Yaml                   (decodeEither')
+-import Database.Persist.Postgresql (PostgresConf)
++--import Database.Persist.Postgresql (PostgresConf)
+ import Language.Haskell.TH.Syntax  (Exp, Name, Q)
+ import Network.Wai.Handler.Warp    (HostPreference)
+ import Yesod.Default.Config2       (applyEnvValue, configSettingsYml)
+ import Yesod.Default.Util          (WidgetFileSettings, widgetFileNoReload,
+                                     widgetFileReload)
+ 
++import qualified Data.ByteString as BS
++import qualified GHC.Generics
++
++data PostgresConf = PostgresConf {
++    pgConnStr :: BS.ByteString
++  , pgPoolSize :: Int
++  } deriving (Eq, Generic)
++
++instance FromJSON PostgresConf where
++  parseJSON _ = return $ PostgresConf "" 0
++
+ -- | Runtime settings to configure this application. These settings can be
+ -- loaded from various sources: defaults, environment variables, config files,
+ -- theoretically even a database.
+diff --git a/Carnap-Server/config/keter.yml b/Carnap-Server/config/keter.yml
+index 3a6583d..e2bdb58 100644
+--- a/Carnap-Server/config/keter.yml
++++ b/Carnap-Server/config/keter.yml
+@@ -21,30 +21,31 @@ stanzas:
+       # You can specify one or more hostnames for your application to respond
+       # to. The primary hostname will be used for generating your application
+       # root.
++      - localhost
+       - Carnap.io
+       - 162.243.2.252
+ 
+     # Enable to force Keter to redirect to https
+     # Can be added to any stanza
+-    requires-secure: true
+-    ssl: true
++    #requires-secure: true
++    #ssl: true
+ 
+   # Static files.
+   - type: static-files
+     hosts:
+-      - static.Carnap-Server.com
++      - localhost
+     root: ../static
+ 
+     # Uncomment to turn on directory listings.
+-    # directory-listing: true
++    directory-listing: true
+ 
+   - type: redirect
+ 
+     hosts:
+-      - www.carnap.io
++      - localhost
+     actions:
+-      - host: carnap.io
+-        secure: true
++      - host: localhost
++        secure: false
+         # port: 80
+ 
+     # Uncomment to switch to a non-permanent redirect.
+@@ -64,4 +65,4 @@ copy-to: root@162.243.2.252:/opt/keter/incoming/
+ # and set appropriate environment variables for it to be discovered, uncomment
+ # the following line.
+ plugins:
+-    postgres: true
++    postgres: false
+diff --git a/Carnap-Server/config/settings.yml b/Carnap-Server/config/settings.yml
+index 20fcaa8..b7d5d9b 100644
+--- a/Carnap-Server/config/settings.yml
++++ b/Carnap-Server/config/settings.yml
+@@ -8,7 +8,7 @@ ip-from-header: "_env:IP_FROM_HEADER:false"
+ 
+ # Default behavior: determine the application root from the request headers.
+ # Uncomment to set an explicit approot
+-approot:        "_env:APPROOT:carnap.io"
++#approot:        "_env:APPROOT:carnap.io"
+ 
+ # Optional values with the following production defaults.
+ # In development, they default to the inverse.
+@@ -36,7 +36,7 @@ copyright: Copyright 2015-2018 G. Leach-Krouse <gleachkr@ksu.edu> and J. Ehrlich
+ #set to true if you want to run without a postgres installation
+ sqlite: true
+ 
+-data-root: "_env:DATAROOT:/var/lib/carnap"
+-book-root: "_env:BOOKROOT:/var/lib/carnap/book/"
++data-root: "_env:DATAROOT:/opt/carnap"
++book-root: "_env:BOOKROOT:/opt/carnap/book/"
+ 
+ #analytics: UA-YOURCODE

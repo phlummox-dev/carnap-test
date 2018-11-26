@@ -1,0 +1,40 @@
+diff --git a/Carnap-Server/Carnap-Server.cabal b/Carnap-Server/Carnap-Server.cabal
+index a00fd3f..5e4b6cd 100644
+--- a/Carnap-Server/Carnap-Server.cabal
++++ b/Carnap-Server/Carnap-Server.cabal
+@@ -5,7 +5,7 @@ build-type:        Simple
+ 
+ Flag dev
+     Description:   Turn on development settings, like auto-reload templates.
+-    Default:       False
++    Default:       True
+ 
+ Flag library-only
+     Description:   Build for use with "yesod devel"
+@@ -15,7 +15,7 @@ library
+     hs-source-dirs:  ., app
+     exposed-modules: Application
+                      Foundation
+-                     SecureStrings
++                     -- SecureStrings
+                      Import
+                      Import.NoFoundation
+                      Model
+@@ -83,7 +83,7 @@ library
+                  , bytestring                    >= 0.9        && < 0.11
+                  , text                          >= 0.11       && < 2.0
+                  , persistent                    >= 2.0        && < 2.6
+-                 , persistent-postgresql         >= 2.1.1      && < 2.6
++                 -- , persistent-postgresql         >= 2.1.1      && < 2.6
+                  , persistent-sqlite
+                  , persistent-template           >= 2.0        && < 2.6
+                  , template-haskell
+@@ -169,7 +169,7 @@ test-suite test
+                  , yesod-core
+                  , yesod
+                  , persistent
+-                 , persistent-postgresql
++                 -- , persistent-postgresql
+                  , resourcet
+                  , monad-logger
+                  , shakespeare
